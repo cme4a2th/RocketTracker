@@ -341,7 +341,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
 
         if (device == null) {
             System.out.println("No device!");
-            showAlert("No USB devices found.")
+            showAlert("No USB devices found.");
             return;
         }
 
