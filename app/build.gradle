@@ -28,4 +28,5 @@ dependencies {
     compile 'com.akexorcist:bluetoothspp:1.0.0'
     compile 'io.nlopez.smartlocation:library:3.3.3'
     implementation 'com.google.android.gms:play-services-maps:11.4.2'
+    compile 'com.github.felHR85:UsbSerial:4.5'
 }

@@ -1,7 +1,17 @@
 package rockettracker.gregoryemorgandds.com.rockettracker;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Color;
+import android.hardware.usb.UsbDevice;
+import android.hardware.usb.UsbDeviceConnection;
+import android.hardware.usb.UsbManager;
 import android.os.Bundle;
 
 import android.Manifest;
@@ -22,12 +32,17 @@ import android.support.annotation.NonNull;
 import java.io.*;
 import java.text.DateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
 import io.nlopez.smartlocation.*;
 import io.nlopez.smartlocation.location.config.*;
 
 import android.location.Location;
 
+import com.felhr.usbserial.UsbSerialDevice;
+import com.felhr.usbserial.UsbSerialInterface;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.OnMapReadyCallback;
 
@@ -208,6 +223,155 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         updatePositions();
     }
 
+    private void parseUSBData(String message) {
+        System.out.println("Got data: " + message);
+
+        // USB PARSING CODE HERE
+
+
+    }
+
+    private void parseBluetoothData(String message) {
+        System.out.println("Got data: " + message);
+
+        // BLUETOOTH PARSING CODE HERE
+
+        stream.println(message);
+        textdata.append("\n" + message);
+
+        String[] separated = message.split(",");
+
+        if (!separated[0].equals("$GPGGA")) return;
+
+
+        double time = Double.valueOf(separated[1]);
+        timeLabel.setText(DumbTimeToGoodTime(time));
+
+        if (separated[2].equals("")) {
+            latLabel.setText("LOS");
+            lonLabel.setText("LOS");
+            altLabel.setText("LOS");
+            bearingLabel.setText("LOS");
+            angleLabel.setText("LOS");
+            rangeLabel.setText("LOS");
+            return;
+        }
+
+        double tlat = Double.valueOf(separated[2]);
+        String latD = separated[3];
+
+        double tlon = Double.valueOf(separated[4]);
+        String lonD = separated[5];
+
+        lastalt = alt;
+
+        lat = ToDecimalDegrees(tlat, latD);
+        lon = ToDecimalDegrees(tlon, lonD);
+        alt = Double.valueOf(separated[9]) * 3.28084;
+
+        if (alt > maxalt) {
+            maxalt = alt;
+        }
+
+        updateCalcs();
+    }
+
+    private void showAlert(String message) {
+        AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this).create();
+        alertDialog.setTitle("Alert");
+        alertDialog.setMessage(message);
+        alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        });
+        alertDialog.show();
+    }
+
+    private static final String ACTION_USB_ATTACHED  = "android.hardware.usb.action.USB_DEVICE_ATTACHED";
+    private static final String ACTION_USB_DETACHED  = "android.hardware.usb.action.USB_DEVICE_DETACHED";
+
+    private static final String ACTION_USB_PERMISSION  = "com.blecentral.USB_PERMISSION";
+
+    private void connectUSB() {
+
+        System.out.println("Connecting USB");
+
+
+        UsbManager manager = (UsbManager)getSystemService(Context.USB_SERVICE);
+
+        BroadcastReceiver mUsbReceiver = new BroadcastReceiver() {
+            public void onReceive(Context context, Intent intent) {
+                String action = intent.getAction();
+                if (ACTION_USB_PERMISSION.equals(action)) {
+                    synchronized (this) {
+                        UsbDevice device = (UsbDevice)intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+                        if (intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
+                            System.out.println("Permission granted!");
+                        } else {
+                            System.out.println("Permission revoked!");
+                            showAlert("Failed to get USB permissions.");
+                        }
+                    }
+                }
+            }
+        };
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(ACTION_USB_ATTACHED);
+        filter.addAction(ACTION_USB_DETACHED);
+        registerReceiver(mUsbReceiver,filter);
+
+
+        Map<String, UsbDevice> map = manager.getDeviceList();
+        UsbDevice device = null;
+
+        int FTVID = 0x0403;
+        int FTPID = 0x6015;
+
+        Iterator<UsbDevice> deviter = map.values().iterator();
+
+        while (deviter.hasNext()) {
+            UsbDevice d = deviter.next();
+            System.out.println("Found USB device: " + d.getDeviceName());
+            if (d.getVendorId() == FTVID && d.getProductId() == FTPID) {
+                device = d;
+            }
+        }
+
+        if (device == null) {
+            System.out.println("No device!");
+            showAlert("No USB devices found.")
+            return;
+        }
+
+        if (!manager.hasPermission(device)) {
+            PendingIntent mPermissionIntent = PendingIntent.getBroadcast(this, 0, new Intent(ACTION_USB_PERMISSION), 0);
+            manager.requestPermission(device, mPermissionIntent);
+            return;
+        }
+
+        connButton.setText("Disconnect");
+        connLabel.setText("Connected");
+        connLabel.setTextColor(Color.GREEN);
+
+        UsbDeviceConnection usbConnection = manager.openDevice(device);
+        UsbSerialDevice serial = UsbSerialDevice.createUsbSerialDevice(device, usbConnection);
+        serial.open();
+        serial.setBaudRate(9600);
+        serial.setDataBits(UsbSerialInterface.DATA_BITS_8);
+        serial.setParity(UsbSerialInterface.PARITY_NONE);
+        serial.setFlowControl(UsbSerialInterface.FLOW_CONTROL_OFF);
+
+        UsbSerialInterface.UsbReadCallback mCallback = new UsbSerialInterface.UsbReadCallback() {
+            @Override public void onReceivedData(byte[] data) {
+                parseUSBData(data.toString());
+            }
+        };
+
+        serial.read(mCallback);
+    }
+
     private PrintWriter stream;
     FileOutputStream os;
 
@@ -271,11 +435,12 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         connButton = findViewById(R.id.connect_id);
         connButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                if (connButton.getText().equals("Connect")) {
-                    bt.connect("98:D3:31:70:6D:F6");
-                } else {
-                    bt.disconnect();
-                }
+                connectUSB();
+//                if (connButton.getText().equals("Connect")) {
+//                    bt.connect("98:D3:31:70:6D:F6");
+//                } else {
+//                    bt.disconnect();
+//                }
             }
         });
 
@@ -344,7 +509,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                 goToRocket();
             }
         });
-        
+
         calButton = findViewById(R.id.cal_id);
         calButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -355,47 +520,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         });
         bt.setOnDataReceivedListener(new OnDataReceivedListener() {
             public void onDataReceived(byte[] data, String message) {
-                System.out.println("Got data: " + message);
-
-                stream.println(message);
-                textdata.append("\n" + message);
-
-                String[] separated = message.split(",");
-
-                if (!separated[0].equals("$GPGGA")) return;
-
-
-                double time = Double.valueOf(separated[1]);
-                timeLabel.setText(DumbTimeToGoodTime(time));
-
-                if (separated[2].equals("")) {
-                    latLabel.setText("LOS");
-                    lonLabel.setText("LOS");
-                    altLabel.setText("LOS");
-                    bearingLabel.setText("LOS");
-                    angleLabel.setText("LOS");
-                    rangeLabel.setText("LOS");
-                    return;
-                }
-
-                double tlat = Double.valueOf(separated[2]);
-                String latD = separated[3];
-
-                double tlon = Double.valueOf(separated[4]);
-                String lonD = separated[5];
-
-                lastalt = alt;
-
-                lat = ToDecimalDegrees(tlat, latD);
-                lon = ToDecimalDegrees(tlon, lonD);
-                alt = Double.valueOf(separated[9]) * 3.28084;
-
-                if (alt > maxalt) {
-                    maxalt = alt;
-                }
-
-                updateCalcs();
-
+                parseBluetoothData(message);
             }
         });
 
