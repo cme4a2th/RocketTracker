@@ -344,21 +344,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                 goToRocket();
             }
         });
-
-
-//        mapButton = findViewById(R.id.map_id);
-//        mapButton.setOnClickListener(new View.OnClickListener() {
-//            public void onClick(View v) {
-//                Intent myIntent = new Intent(MainActivity.this, MapActivity.class);
-//                myIntent.putExtra("latkey", lat);
-//                myIntent.putExtra("lonkey", lon);
-//                myIntent.putExtra("bearingkey", markerString);
-//                myIntent.putExtra("mylatkey", mylat);
-//                myIntent.putExtra("mylonkey", mylon);
-//                MainActivity.this.startActivity(myIntent);
-//            }
-//        });
-
+        
         calButton = findViewById(R.id.cal_id);
         calButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
