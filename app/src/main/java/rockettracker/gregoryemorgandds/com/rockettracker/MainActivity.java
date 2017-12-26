@@ -223,21 +223,34 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         updatePositions();
     }
 
-    private void parseUSBData(String message) {
+    private void parseUSBData(final String message) {
         System.out.println("Got data: " + message);
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                textdata.append("\n" + message);
+            }
+        });
 
         // USB PARSING CODE HERE
 
 
     }
 
-    private void parseBluetoothData(String message) {
+    private void parseBluetoothData(final String message) {
         System.out.println("Got data: " + message);
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                textdata.append("\n" + message);
+            }
+        });
 
         // BLUETOOTH PARSING CODE HERE
 
         stream.println(message);
-        textdata.append("\n" + message);
 
         String[] separated = message.split(",");
 
@@ -292,6 +305,24 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
     private static final String ACTION_USB_DETACHED  = "android.hardware.usb.action.USB_DEVICE_DETACHED";
 
     private static final String ACTION_USB_PERMISSION  = "com.blecentral.USB_PERMISSION";
+
+    private static final ByteArrayOutputStream usbStream = new ByteArrayOutputStream();
+
+    private UsbSerialInterface.UsbReadCallback mCallback = new UsbSerialInterface.UsbReadCallback() {
+        @Override public void onReceivedData(byte[] data) {
+            try {
+                usbStream.write(data);
+            } catch (IOException e) {
+
+            }
+
+            // Parse when packet is received.
+            if (data[data.length - 1] == '\n') {
+                parseUSBData(usbStream.toString());
+                usbStream.reset();
+            }
+        }
+    };
 
     private void connectUSB() {
 
@@ -361,13 +392,8 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         serial.setBaudRate(9600);
         serial.setDataBits(UsbSerialInterface.DATA_BITS_8);
         serial.setParity(UsbSerialInterface.PARITY_NONE);
+        serial.setStopBits(1);
         serial.setFlowControl(UsbSerialInterface.FLOW_CONTROL_OFF);
-
-        UsbSerialInterface.UsbReadCallback mCallback = new UsbSerialInterface.UsbReadCallback() {
-            @Override public void onReceivedData(byte[] data) {
-                parseUSBData(data.toString());
-            }
-        };
 
         serial.read(mCallback);
     }
