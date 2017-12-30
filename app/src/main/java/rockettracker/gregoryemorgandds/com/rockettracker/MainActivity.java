@@ -239,13 +239,23 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         mv.onCreate(savedInstanceState);
         mv.getMapAsync(this);
 
+        btusb = findViewById(R.id.btusb);
+
         connButton = findViewById(R.id.connect_id);
         connButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                if (anyConnected) {
-                    disconnectAll();
+                if (btusb.isChecked()) {
+                    if (bluetoothConnected) {
+                        disconnectBluetooth();
+                    } else {
+                        connectBluetooth();
+                    }
                 } else {
-                    connectAll();
+                    if (usbConnected) {
+                        disconnectUSB();
+                    } else {
+                        connectUSB();
+                    }
                 }
             }
         });
@@ -393,6 +403,9 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
 
     private void disconnectBluetooth() {
         bt.disconnect();
+        bluetoothConnected = false;
+        updateUI();
+        closeLogFile();
     }
 
     /* USB connection handler functions. */
@@ -481,41 +494,34 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
             @Override public void onReceivedData(byte[] data) {
                 try {
                     usbStream.write(data);
+                    if (data[data.length - 1] == '\n') {
+                        parseUSBData(usbStream.toString());
+                        usbStream.reset();
+                    }
                 } catch (IOException e) {
-
-                }
-
-                if (data[data.length - 1] == '\n') {
-                    parseUSBData(usbStream.toString());
-                    usbStream.reset();
+                    showAlert("Malformed USB serial message received.");
                 }
             }
         };
 
         /* Start receiving USB data. */
         usbSerial.read(mCallback);
+
+        usbConnected = true;
+
+        updateUI();
+        openLogFile();
     }
 
     private void disconnectUSB() {
         usbSerial.close();
         usbConnection.close();
+        usbConnected = false;
+        updateUI();
+        closeLogFile();
     }
 
     /* Global connection handler functions. */
-
-    /* Connects to all of the available devices. */
-    private void connectAll() {
-        openLogFile();
-        connectBluetooth();
-        connectUSB();
-    }
-
-    /* Disconnects from all of the available devices. */
-    private void disconnectAll() {
-        disconnectBluetooth();
-        disconnectUSB();
-        closeLogFile();
-    }
 
     /* --- Location handler functions. --- */
 
@@ -706,7 +712,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         });
     }
 
-    private void updateTextView(String message) {
+    private void updateTextView(final String message) {
         runOnUiThread(new Runnable() {
             @Override public void run() {
                 textdata.append(message + '\n');
