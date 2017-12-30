@@ -194,28 +194,39 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN);
 
+        /* Connected status text field. */
         connLabel = (TextView) findViewById(R.id.conn_id);
         connLabel.setTextColor(Color.RED);
 
+        /* Tablet lat, lon, alt text fields. */
         myLatLabel = (TextView) findViewById(R.id.mylat_id);
         myLonLabel = (TextView) findViewById(R.id.mylon_id);
         myAltLabel = (TextView) findViewById(R.id.myalt_id);
+
+        /* Rocket lat, lon, alt text fields. */
         latLabel = (TextView) findViewById(R.id.lat_id);
         lonLabel = (TextView) findViewById(R.id.lon_id);
         altLabel = (TextView) findViewById(R.id.alt_id);
+
+        /* Time text field. */
         timeLabel = (TextView) findViewById(R.id.time_id);
+
+        /* Angle, range, bearing text fields. */
         angleLabel = (TextView) findViewById(R.id.angle_id);
         rangeLabel = (TextView) findViewById(R.id.range_id);
         bearingLabel = (TextView) findViewById(R.id.bearing_id);
+
+        /* Max alt field. */
         maximum = (TextView) findViewById(R.id.maximum);
 
+        /* Manual lat, lon, alt text fields. */
         manlat = (TextView) findViewById(R.id.manlat);
         manlong = (TextView) findViewById(R.id.manlong);
         manalt = (TextView) findViewById(R.id.manalt);
 
+        /* Data text view. */
         textdata = (TextView) findViewById(R.id.textdata);
         textdata.setTextColor(Color.BLUE);
         textdata.setMovementMethod(new ScrollingMovementMethod());
@@ -223,7 +234,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         textdata.setMaxLines(Integer.MAX_VALUE);
         textdata.setGravity(Gravity.BOTTOM);
 
-
+        /* Map view. */
         mv = findViewById(R.id.map_id);
         mv.onCreate(savedInstanceState);
         mv.getMapAsync(this);
@@ -231,10 +242,10 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         connButton = findViewById(R.id.connect_id);
         connButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                if (connButton.getText().equals("Connect")) {
-                    connectAll();
-                } else {
+                if (anyConnected) {
                     disconnectAll();
+                } else {
+                    connectAll();
                 }
             }
         });
@@ -242,14 +253,10 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         mapdataButton = findViewById(R.id.mapdata);
         mapdataButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                if (mapdataButton.getText().equals("Map")) {
-                    mapdataButton.setText("Data");
-                    textdata.setVisibility(View.INVISIBLE);
-                    mv.setVisibility(View.VISIBLE);
+                if (mv.getVisibility() == View.INVISIBLE) {
+                    showMap();
                 } else {
-                    mapdataButton.setText("Map");
-                    textdata.setVisibility(View.VISIBLE);
-                    mv.setVisibility(View.INVISIBLE);
+                    hideMap();
                 }
             }
         });
@@ -257,29 +264,16 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         gotomeButton = findViewById(R.id.gotome);
         gotomeButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-
                 goToMe();
-
-                if (mapdataButton.getText().equals("Map")) {
-                    mapdataButton.setText("Data");
-                    textdata.setVisibility(View.INVISIBLE);
-                    mv.setVisibility(View.VISIBLE);
-                }
+                showMap();
             }
         });
 
         gotorocketButton = findViewById(R.id.gotorocket);
         gotorocketButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-
                 goToRocket();
-
-                if (mapdataButton.getText().equals("Map")) {
-                    mapdataButton.setText("Data");
-                    textdata.setVisibility(View.INVISIBLE);
-                    mv.setVisibility(View.VISIBLE);
-                }
-
+                showMap();
             }
         });
 
@@ -287,11 +281,14 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         manButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 if (manButton.getText().equals("----")) {
+
                     if (manlat.getText().toString().equals("")) return;
                     if (manlong.getText().toString().equals("")) return;
                     if (manalt.getText().toString().equals("")) return;
+
                     manButton.setText("Remote-2");
                     manflag = true;
+
                     mlat = Double.valueOf(manlat.getText().toString());
                     mlon = Double.valueOf(manlong.getText().toString());
                     malt = Double.valueOf(manalt.getText().toString());
@@ -303,7 +300,6 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                     manflag = false;
                 }
 
-                updateCalcs();
                 updatePositions();
                 goToRocket();
             }
@@ -321,6 +317,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         requestPermissions();
         configureBluetooth();
         configureUSB();
+        updateUI();
 
     }
 
@@ -371,7 +368,6 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
             /* This is called when a bluetooth device is connected. */
             public void onDeviceConnected(String name, String address) {
                 bluetoothConnected = true;
-                openLogFile();
                 updateUI();
             }
             /* This is callde with a bluetooth device is disconnected. */
@@ -509,6 +505,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
 
     /* Connects to all of the available devices. */
     private void connectAll() {
+        openLogFile();
         connectBluetooth();
         connectUSB();
     }
@@ -517,6 +514,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
     private void disconnectAll() {
         disconnectBluetooth();
         disconnectUSB();
+        closeLogFile();
     }
 
     /* --- Location handler functions. --- */
@@ -547,9 +545,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                 /* Convert the altitude from meters to feet. Set the tablet's altitude. */
                 myalt = l.getAltitude() * 3.28084;
 
-                updateCalcs();
                 updatePositions();
-                goToMe();
                 updateUI();
             }
         });
@@ -570,6 +566,9 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
 
     /* SD and logging handler functions. */
 
+    private PrintWriter stream = null;
+    FileOutputStream os = null;
+
     /* Opens a new log file on the SD card. */
     private void openLogFile() {
         File dir = new File ("/sdcard/logs");
@@ -589,6 +588,11 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         }
     }
 
+    /* Writes to the open log file. */
+    private void writeLogFile(String message) {
+
+    }
+
     /* Closes the open log file */
     private void closeLogFile() {
 
@@ -597,11 +601,13 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
 
     /* --- User interface related functions. --- */
 
+    private boolean anyConnected = false;
     private boolean haveLOS = true;
 
     /* Displays a simple UI alert. */
     private void showAlert(String message) {
         AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this).create();
+
         alertDialog.setTitle("Alert");
         alertDialog.setMessage(message);
         alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK", new DialogInterface.OnClickListener() {
@@ -609,6 +615,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                 dialog.dismiss();
             }
         });
+
         alertDialog.show();
     }
 
@@ -616,20 +623,17 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
     private void updateUI() {
         /* Run UI updates on the UI thread. */
         runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
+            @Override public void run() {
 
                 /* OR the connected states together to get the current connected state */
-                boolean connectedStatus = bluetoothConnected;
+                anyConnected = bluetoothConnected | usbConnected;
 
                 /* Update the connection status UI. */
-                if (connectedStatus) {
-                    System.out.println("Connected");
+                if (anyConnected) {
                     connButton.setText("Disconnect");
                     connLabel.setText("Connected");
                     connLabel.setTextColor(Color.GREEN);
                 } else {
-                    System.out.println("Disonnected");
                     connLabel.setText("Disconnected");
                     connLabel.setTextColor(Color.RED);
                     connButton.setText("Connect");
@@ -640,24 +644,89 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                 myLonLabel.setText(String.format("%.08f", mylon));
                 myAltLabel.setText(String.format("%.00f' MSL", myalt + altcal));
 
+                timeLabel.setText(DumbTimeToGoodTime(time));
+
                 if (haveLOS) {
+
                     latLabel.setText("LOS");
                     lonLabel.setText("LOS");
                     altLabel.setText("LOS");
                     bearingLabel.setText("LOS");
                     angleLabel.setText("LOS");
                     rangeLabel.setText("LOS");
+
                 } else {
 
-                }
+                    double lat1 = mylat;
+                    double lon1 = mylon;
+                    double lalt = myalt + altcal;
 
-                timeLabel.setText(DumbTimeToGoodTime(time));
+                    double lat2 = 0;
+                    double lon2 = 0;
+                    double alt2 = 0;
+
+                    if (manflag) {
+                        lon2 = mlon;
+                        lat2 = mlat;
+                        alt2 = malt;
+                    } else {
+                        lon2 = lon;
+                        lat2 = lat;
+                        alt2 = alt;
+                    }
+
+                    double bearingDeg = bearingDegrees(lat1, lon1, lat2, lon2);
+                    String bearing = DegreesToCardinalDetailed(bearingDeg);
+                    double range = GreatCircle(lat1, lon1, lat2, lon2);
+                    double angle = Math.toDegrees(Math.atan2(alt2-lalt, range));
+                    if (angle < 0) angle = 0;
+
+                    latLabel.setText(String.format("%.08f", lat));
+                    lonLabel.setText(String.format("%.08f", lon));
+                    altLabel.setText(String.format("%.00f' MSL", alt2));
+                    bearingLabel.setText(String.format("%.00f\u00b0 : %s", bearingDeg, bearing));
+                    angleLabel.setText(String.format("%.00f\u00b0", angle));
+
+                    if (range < 5280/2) {
+                        markerString = String.format("%.00f' MSL : %.00f\u00b0 %s : %.00f feet : %.00f\u00b0", alt2, bearingDeg, bearing, range, angle);
+                        rangeLabel.setText(String.format("%.00f feet", range));
+                    } else {
+                        markerString = String.format("%.00f' MSL : %.00f\u00b0 %s : %.02f miles : %.00f\u00b0", alt2, bearingDeg, bearing, range * 0.000189394, angle);
+                        rangeLabel.setText(String.format("%.02f miles", range * 0.000189394));
+                    }
+
+                    double agl = maxalt-(myalt+altcal);
+                    if (agl<0) agl = 0;
+
+                    maximum.setText(String.format("%.00f' MSL\n%.00f' AGL", maxalt, agl));
+
+                }
 
             }
         });
     }
 
-    public void goToRocket() {
+    private void updateTextView(String message) {
+        runOnUiThread(new Runnable() {
+            @Override public void run() {
+                textdata.append(message + '\n');
+            }
+        });
+    }
+
+    private void showMap() {
+        mapdataButton.setText("Data");
+        textdata.setVisibility(View.INVISIBLE);
+        mv.setVisibility(View.VISIBLE);
+    }
+
+    private void hideMap() {
+        mapdataButton.setText("Data");
+        textdata.setVisibility(View.INVISIBLE);
+        mv.setVisibility(View.VISIBLE);
+    }
+
+    private void goToRocket() {
         double lat2 = 0;
         double lon2 = 0;
 
@@ -679,7 +748,6 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
     }
 
     Boolean zoomed = false;
-
 
     public void updatePositions() {
 
@@ -711,53 +779,6 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         }
     }
 
-    /* Does the math to update the bearing/degree/etc. */
-    private void updateCalcs() {
-        double lat1 = mylat;
-        double lon1 = mylon;
-        double lalt = myalt + altcal;
-
-        double lat2 = 0;
-        double lon2 = 0;
-        double alt2 = 0;
-
-        if (manflag) {
-            lon2 = mlon;
-            lat2 = mlat;
-            alt2 = malt;
-        } else {
-            lon2 = lon;
-            lat2 = lat;
-            alt2 = alt;
-        }
-
-        double bearingDeg = bearingDegrees(lat1, lon1, lat2, lon2);
-        String bearing = DegreesToCardinalDetailed(bearingDeg);
-        double range = GreatCircle(lat1, lon1, lat2, lon2);
-        double angle = Math.toDegrees(Math.atan2(alt2-lalt, range));
-        if (angle < 0) angle = 0;
-
-        latLabel.setText(String.format("%.08f", lat));
-        lonLabel.setText(String.format("%.08f", lon));
-        altLabel.setText(String.format("%.00f' MSL", alt2));
-        bearingLabel.setText(String.format("%.00f\u00b0 : %s", bearingDeg, bearing));
-        angleLabel.setText(String.format("%.00f\u00b0", angle));
-
-        if (range < 5280/2) {
-            markerString = String.format("%.00f' MSL : %.00f\u00b0 %s : %.00f feet : %.00f\u00b0", alt2, bearingDeg, bearing, range, angle);
-            rangeLabel.setText(String.format("%.00f feet", range));
-        } else {
-            markerString = String.format("%.00f' MSL : %.00f\u00b0 %s : %.02f miles : %.00f\u00b0", alt2, bearingDeg, bearing, range * 0.000189394, angle);
-            rangeLabel.setText(String.format("%.02f miles", range * 0.000189394));
-        }
-
-        double agl = maxalt-(myalt+altcal);
-        if (agl<0) agl = 0;
-
-        maximum.setText(String.format("%.00f' MSL\n%.00f' AGL", maxalt, agl));
-
-    }
-
     /* --- Data parsing functions. --- */
 
     private void parseUSBData(final String message) {
@@ -769,8 +790,8 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
             return;
         }
 
-        /* WARNING: ADD DATA TO TEXT VIEW */
-        /* WARNING: ADD DATA TO LOG FILE */
+        updateTextView(message);
+        writeLogFile(message);
 
         /* Start by splitting by comma. */
         final String[] separated = message.split(",");
@@ -812,7 +833,6 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
             }
         }
 
-        updateCalcs();
         updatePositions();
         updateUI();
 
@@ -827,8 +847,8 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
             return;
         }
 
-        /* WARNING: ADD DATA TO TEXT VIEW */
-        /* WARNING: ADD DATA TO LOG FILE */
+        updateTextView(message);
+        writeLogFile(message);
 
         /* Start by splitting by comma. */
         String[] separated = message.split(",");
@@ -863,11 +883,8 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
 
         }
 
-        updateCalcs();
+        updatePositions();
         updateUI();
     }
-
-    private PrintWriter stream;
-    FileOutputStream os;
 
 }
