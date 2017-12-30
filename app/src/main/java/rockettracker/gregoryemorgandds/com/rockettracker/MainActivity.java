@@ -23,6 +23,7 @@ import android.content.pm.PackageManager;
 import android.text.method.ScrollingMovementMethod;
 import android.view.Gravity;
 import android.view.View;
+import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.Switch;
@@ -193,6 +194,10 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        this.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
         setContentView(R.layout.activity_main);
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN);
 
@@ -312,6 +317,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
 
                 updatePositions();
                 goToRocket();
+                updateUI();
             }
         });
 
@@ -423,6 +429,10 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
 
     private void configureUSB() {
 
+    }
+
+    private void connectUSB() {
+
         System.out.println("Connecting USB");
 
         UsbManager manager = (UsbManager)getSystemService(Context.USB_SERVICE);
@@ -476,9 +486,6 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         /* Open the USB device. */
         usbConnection = manager.openDevice(usbDevice);
 
-    }
-
-    private void connectUSB() {
         /* Create a serial endpoint */
         usbSerial = UsbSerialDevice.createUsbSerialDevice(usbDevice, usbConnection);
 
@@ -568,6 +575,9 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         rocketMarker = map.addMarker(new MarkerOptions().position(rocket).title("Rocket"));
 
         mv.onResume();
+
+        updatePositions();
+        listenLocation();
     }
 
     /* SD and logging handler functions. */
@@ -652,7 +662,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
 
                 timeLabel.setText(DumbTimeToGoodTime(time));
 
-                if (haveLOS) {
+                if (haveLOS && !manflag) {
 
                     latLabel.setText("LOS");
                     lonLabel.setText("LOS");
@@ -687,10 +697,11 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                     double angle = Math.toDegrees(Math.atan2(alt2-lalt, range));
                     if (angle < 0) angle = 0;
 
-                    latLabel.setText(String.format("%.08f", lat));
-                    lonLabel.setText(String.format("%.08f", lon));
+                    latLabel.setText(String.format("%.08f", lat2));
+                    lonLabel.setText(String.format("%.08f", lon2));
                     altLabel.setText(String.format("%.00f' MSL", alt2));
                     bearingLabel.setText(String.format("%.00f\u00b0 : %s", bearingDeg, bearing));
+
                     angleLabel.setText(String.format("%.00f\u00b0", angle));
 
                     if (range < 5280/2) {
@@ -727,9 +738,9 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
     }
 
     private void hideMap() {
-        mapdataButton.setText("Data");
-        textdata.setVisibility(View.INVISIBLE);
-        mv.setVisibility(View.VISIBLE);
+        mapdataButton.setText("Map");
+        textdata.setVisibility(View.VISIBLE);
+        mv.setVisibility(View.INVISIBLE);
     }
 
     private void goToRocket() {

@@ -228,7 +228,7 @@
     <com.google.android.gms.maps.MapView
         android:id="@+id/map_id"
         android:layout_width="613dp"
-        android:layout_height="752dp"
+        android:layout_height="775dp"
         android:layout_marginEnd="52dp"
         android:layout_marginRight="16dp"
         android:layout_marginStart="8dp"
@@ -618,10 +618,14 @@
         android:id="@+id/btusb"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
         android:layout_marginTop="8dp"
         android:checked="true"
-        android:text="BT/USB "
-        app:layout_constraintTop_toTopOf="parent"
-        tools:layout_editor_absoluteX="234dp" />
+        android:textOff="USB"
+        android:textOn="BT"
+        app:layout_constraintEnd_toStartOf="@+id/lonT5"
+        app:layout_constraintStart_toEndOf="@+id/conn_id"
+        app:layout_constraintTop_toTopOf="parent" />
 
 </android.support.constraint.ConstraintLayout>
