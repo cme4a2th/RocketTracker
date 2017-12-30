@@ -32,7 +32,9 @@ import android.widget.TextView;
 import android.support.annotation.NonNull;
 
 import java.io.*;
+import java.lang.reflect.Array;
 import java.text.DateFormat;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -327,6 +329,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                 if (lastalt != 0) {
                     altcal = lastalt-myalt;
                 }
+                updateUI();
             }
         });
 
@@ -732,68 +735,94 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
     }
 
     private void showMap() {
-        mapdataButton.setText("Data");
-        textdata.setVisibility(View.INVISIBLE);
-        mv.setVisibility(View.VISIBLE);
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mapdataButton.setText("Data");
+                textdata.setVisibility(View.INVISIBLE);
+                mv.setVisibility(View.VISIBLE);
+            }
+        });
     }
 
     private void hideMap() {
-        mapdataButton.setText("Map");
-        textdata.setVisibility(View.VISIBLE);
-        mv.setVisibility(View.INVISIBLE);
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mapdataButton.setText("Map");
+                textdata.setVisibility(View.VISIBLE);
+                mv.setVisibility(View.INVISIBLE);
+            }
+        });
     }
 
     private void goToRocket() {
-        double lat2 = 0;
-        double lon2 = 0;
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                double lat2 = 0;
+                double lon2 = 0;
 
-        if (manflag) {
-            lon2 = mlon;
-            lat2 = mlat;
-        } else {
-            lon2 = lon;
-            lat2 = lat;
-        }
+                if (manflag) {
+                    lon2 = mlon;
+                    lat2 = mlat;
+                } else {
+                    lon2 = lon;
+                    lat2 = lat;
+                }
 
-        LatLng rocket = new LatLng(lat2, lon2);
-        map.moveCamera(CameraUpdateFactory.newLatLngZoom(rocket, 17.0f));
+                LatLng rocket = new LatLng(lat2, lon2);
+                map.moveCamera(CameraUpdateFactory.newLatLngZoom(rocket, 17.0f));
+            }
+        });
     }
 
     private void goToMe() {
-        LatLng me = new LatLng(mylat, mylon);
-        map.moveCamera(CameraUpdateFactory.newLatLngZoom(me, 17.0f));
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                LatLng me = new LatLng(mylat, mylon);
+                map.moveCamera(CameraUpdateFactory.newLatLngZoom(me, 17.0f));
+            }
+        });
     }
 
     Boolean zoomed = false;
 
     public void updatePositions() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
 
-        if (meMarker == null || rocketMarker == null) return;
+                if (meMarker == null || rocketMarker == null) return;
 
-        double lat2 = 0;
-        double lon2 = 0;
+                double lat2 = 0;
+                double lon2 = 0;
 
-        if (manflag) {
-            lon2 = mlon;
-            lat2 = mlat;
-        } else {
-            lon2 = lon;
-            lat2 = lat;
-        }
+                if (manflag) {
+                    lon2 = mlon;
+                    lat2 = mlat;
+                } else {
+                    lon2 = lon;
+                    lat2 = lat;
+                }
 
-        LatLng me = new LatLng(mylat, mylon);
-        meMarker.setPosition(me);
-        meMarker.showInfoWindow();
+                LatLng me = new LatLng(mylat, mylon);
+                meMarker.setPosition(me);
+                meMarker.showInfoWindow();
 
-        LatLng rocket = new LatLng(lat2, lon2);
-        rocketMarker.setPosition(rocket);
-        rocketMarker.setTitle(markerString);
-        rocketMarker.showInfoWindow();
+                LatLng rocket = new LatLng(lat2, lon2);
+                rocketMarker.setPosition(rocket);
+                rocketMarker.setTitle(markerString);
+                rocketMarker.showInfoWindow();
 
-        if (!zoomed) {
-            map.moveCamera(CameraUpdateFactory.newLatLngZoom(me, 17.0f));
-            zoomed = true;
-        }
+                if (!zoomed) {
+                    map.moveCamera(CameraUpdateFactory.newLatLngZoom(me, 17.0f));
+                    zoomed = true;
+                }
+
+            }
+        });
     }
 
     /* --- Data parsing functions. --- */
@@ -812,6 +841,9 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
 
         /* Start by splitting by comma. */
         final String[] separated = message.split(",");
+        for (int i = 0; i < separated.length; i++) separated[i] = separated[i].trim();
+
+        System.out.println("RAW ARRAY: " + Arrays.toString(separated));
 
         if (!separated[0].equals("$BRBTX")) {
             System.out.println("Tried to parse a bad USB message.");
@@ -824,6 +856,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         if (separated[4].equals("")) {
             haveLOS = true;
         } else {
+            haveLOS = false;
 
             /* Parse the remaining data if we don't have LOS. */
 
@@ -869,6 +902,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
 
         /* Start by splitting by comma. */
         String[] separated = message.split(",");
+        for (int i = 0; i < separated.length; i++) separated[i] = separated[i].trim();
 
         if (!separated[0].equals("$GPGGA")) {
             System.out.println("Tried to parse a bad bluetooth packet.");
@@ -881,6 +915,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         if (separated[2].equals("")) {
             haveLOS = true;
         } else {
+            haveLOS = false;
 
             double tlat = Double.valueOf(separated[2]);
             String latD = separated[3];
