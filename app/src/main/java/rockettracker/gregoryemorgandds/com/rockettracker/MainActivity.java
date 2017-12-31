@@ -189,8 +189,14 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
     private double mlon = 0;
     private double mlat = 0;
     private double malt = 0;
-
     private double time = 0;
+    private double locallatDDMMmmmm = 0;
+    private double locallonDDMMmmmm = 0;
+    private double remotelatDDMMmmmm = 0;
+    private double remotelonDDMMmmmm = 0;
+    private double manremotelatDDMMmmmm = 0;
+    private double manremotelonDDMMmmmm = 0;
+
 
     private boolean manflag = false;
 
@@ -307,7 +313,9 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                     manflag = true;
 
                     mlat = Double.valueOf(manlat.getText().toString());
+                    manremotelatDDMMmmmm = mlat;
                     mlon = Double.valueOf(manlong.getText().toString());
+                    manremotelonDDMMmmmm = mlon;
                     malt = Double.valueOf(manalt.getText().toString());
                     mlat = ToDecimalDegrees(mlat, "N");
                     mlon = ToDecimalDegrees(mlon, "W");
@@ -389,7 +397,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                 bluetoothConnected = true;
                 updateUI();
             }
-            /* This is callde with a bluetooth device is disconnected. */
+            /* This is called with a bluetooth device is disconnected. */
             public void onDeviceDisconnected() {
                 bluetoothConnected = false;
                 closeLogFile();
@@ -577,10 +585,10 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         meMarker = map.addMarker(new MarkerOptions().position(me).title("Local"));
         rocketMarker = map.addMarker(new MarkerOptions().position(rocket).title("Remote"));
 
-        mv.onResume();
-
         updatePositions();
         listenLocation();
+
+        mv.onResume();
     }
 
     /* SD and logging handler functions. */
@@ -667,12 +675,12 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
 
                 if (haveLOS && !manflag) {
 
-                    latLabel.setText("LOS");
-                    lonLabel.setText("LOS");
-                    altLabel.setText("LOS");
-                    bearingLabel.setText("LOS");
-                    angleLabel.setText("LOS");
-                    rangeLabel.setText("LOS");
+                    latLabel.setText("No Lock");
+                    lonLabel.setText("No Lock");
+                    altLabel.setText("No Lock");
+                    bearingLabel.setText("N/A");
+                    angleLabel.setText("N/A");
+                    rangeLabel.setText("N/A");
 
                 } else {
 
@@ -683,15 +691,22 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                     double lat2 = 0;
                     double lon2 = 0;
                     double alt2 = 0;
+                    double displat = 0;
+                    double displon = 0;
+
 
                     if (manflag) {
                         lon2 = mlon;
                         lat2 = mlat;
                         alt2 = malt;
+                        displat = manremotelatDDMMmmmm;
+                        displon = manremotelonDDMMmmmm;
                     } else {
                         lon2 = lon;
                         lat2 = lat;
                         alt2 = alt;
+                        displat = remotelatDDMMmmmm;
+                        displon = remotelonDDMMmmmm;
                     }
 
                     double bearingDeg = bearingDegrees(lat1, lon1, lat2, lon2);
@@ -700,8 +715,9 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                     double angle = Math.toDegrees(Math.atan2(alt2-lalt, range));
                     if (angle < 0) angle = 0;
 
-                    latLabel.setText(String.format("%.08f", lat2));
-                    lonLabel.setText(String.format("%.08f", lon2));
+                    latLabel.setText(String.format("%.04f", displat));
+
+                    lonLabel.setText(String.format("%.04f", displon));
                     altLabel.setText(String.format("%.00f' MSL", alt2));
                     bearingLabel.setText(String.format("%.00f\u00b0 : %s", bearingDeg, bearing));
 
@@ -851,7 +867,11 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         }
 
         /* Grab the time from the message. */
-        time = Double.valueOf(separated[3]);
+        if (!separated[3].equals("")) {
+            time = Double.valueOf(separated[3]);
+        } else {
+            time = 0;
+        }
 
         if (separated[4].equals("")) {
             haveLOS = true;
@@ -863,12 +883,14 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
             String latString = separated[4];
             String decimalLatString = latString.substring(0, latString.length() - 1);
             double tlat = Double.valueOf(decimalLatString);
+            remotelatDDMMmmmm = Double.valueOf(decimalLatString);
             char latDChar = latString.charAt(latString.length() - 1);
             String latD = Character.toString(latDChar);
 
             String lonString = separated[5];
             String decimalLonString = lonString.substring(0, lonString.length() - 1);
             double tlon = Double.valueOf(decimalLonString);
+            remotelonDDMMmmmm = Double.valueOf(decimalLatString) * -1;
             char lonDChar = lonString.charAt(lonString.length() - 1);
             String lonD = Character.toString(lonDChar);
             lastalt = alt;
@@ -910,7 +932,11 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         }
 
         /* Grab the time from the message. */
-        time = Double.valueOf(separated[1]);
+        if (!separated[1].equals("")) {
+            time = Double.valueOf(separated[1]);
+        } else {
+            time = 0;
+        }
 
         if (separated[2].equals("")) {
             haveLOS = true;
@@ -918,10 +944,15 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
             haveLOS = false;
 
             double tlat = Double.valueOf(separated[2]);
+            remotelatDDMMmmmm = Double.valueOf(separated[2]);
             String latD = separated[3];
 
             double tlon = Double.valueOf(separated[4]);
+            remotelonDDMMmmmm = Double.valueOf(separated[4]);
             String lonD = separated[5];
+            if (lonD.equals("W")) {
+                remotelonDDMMmmmm *= -1;
+            }
 
             lastalt = alt;
 
