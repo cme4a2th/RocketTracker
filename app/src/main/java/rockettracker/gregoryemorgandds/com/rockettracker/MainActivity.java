@@ -574,8 +574,8 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
 
         LatLng me = new LatLng(mylat, mylon);
         LatLng rocket = new LatLng(lat, lon);
-        meMarker = map.addMarker(new MarkerOptions().position(me).title("Me"));
-        rocketMarker = map.addMarker(new MarkerOptions().position(rocket).title("Rocket"));
+        meMarker = map.addMarker(new MarkerOptions().position(me).title("Local"));
+        rocketMarker = map.addMarker(new MarkerOptions().position(rocket).title("Remote"));
 
         mv.onResume();
 

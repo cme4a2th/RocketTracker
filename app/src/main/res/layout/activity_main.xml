@@ -200,7 +200,7 @@
         android:layout_width="371dp"
         android:layout_height="26dp"
         android:layout_marginBottom="8dp"
-        android:text="Received Bluetooth GPS Data:"
+        android:text="Received GPS Data:"
         android:textAllCaps="false"
         android:textColor="@color/colorPrimaryDark"
         android:textSize="16sp"
@@ -214,7 +214,7 @@
     <TextView
         android:id="@+id/textdata"
         android:layout_width="588dp"
-        android:layout_height="503dp"
+        android:layout_height="586dp"
         android:layout_marginBottom="8dp"
         android:layout_marginTop="24dp"
         android:visibility="invisible"
@@ -223,12 +223,12 @@
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.553" />
+        app:layout_constraintVertical_bias="0.586" />
 
     <com.google.android.gms.maps.MapView
         android:id="@+id/map_id"
         android:layout_width="613dp"
-        android:layout_height="775dp"
+        android:layout_height="792dp"
         android:layout_marginEnd="52dp"
         android:layout_marginRight="16dp"
         android:layout_marginStart="8dp"
@@ -603,7 +603,7 @@
         android:layout_height="34dp"
         android:layout_marginLeft="16dp"
         android:layout_marginStart="460dp"
-        android:text="Calibrate"
+        android:text="Alt Sync"
         android:textColor="@color/colorPrimaryDark"
         android:textSize="14sp"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -619,12 +619,13 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="8dp"
-        android:layout_marginStart="8dp"
+        android:layout_marginStart="4dp"
         android:layout_marginTop="8dp"
         android:checked="true"
         android:textOff="USB"
         android:textOn="BT"
         app:layout_constraintEnd_toStartOf="@+id/lonT5"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toEndOf="@+id/conn_id"
         app:layout_constraintTop_toTopOf="parent" />
 
