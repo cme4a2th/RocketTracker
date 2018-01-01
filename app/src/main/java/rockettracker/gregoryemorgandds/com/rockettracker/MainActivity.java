@@ -131,9 +131,9 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
     }
 
     public final String DumbTimeToGoodTime(double time) {
-        int thousands = (int)(getDecimal(time*0.000001)*100);
-        int hundreds = (int)(getDecimal(time*0.0001)*100);
-        int tens = (int)(getDecimal(time*0.01)*100);
+        int thousands = (int)(Math.ceil(getDecimal(time*0.000001)*100));
+        int hundreds = (int)(Math.ceil(getDecimal(time*0.0001)*100));
+        int tens = (int)(Math.ceil(getDecimal(time*0.01)*100));
         return String.format("%02d:%02d:%02d", thousands, hundreds, tens);
     }
 
@@ -325,9 +325,9 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                     manflag = false;
                 }
 
-                updatePositions();
-                goToRocket();
                 updateUI();
+                goToRocket();
+
             }
         });
 
@@ -511,9 +511,13 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         UsbSerialInterface.UsbReadCallback mCallback = new UsbSerialInterface.UsbReadCallback() {
             @Override public void onReceivedData(byte[] data) {
                 try {
+                    System.out.println("Got data: '" + Arrays.toString(data) + "'");
                     usbStream.write(data);
-                    if (data[data.length - 1] == '\n') {
-                        parseUSBData(usbStream.toString());
+                    if (usbStream.toString().indexOf("\n\r") != -1) {
+                        String[] split = usbStream.toString().split("\n\r");
+                        for (int i = 0; i < split.length; i ++) {
+                            parseUSBData(split[i]);
+                        }
                         usbStream.reset();
                     }
                 } catch (IOException e) {
@@ -569,7 +573,6 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                 /* Convert the altitude from meters to feet. Set the tablet's altitude. */
                 myalt = l.getAltitude() * 3.28084;
 
-                updatePositions();
                 updateUI();
             }
         });
@@ -577,6 +580,9 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
 
     /* Called when we are ready to display the map. */
     @Override public void onMapReady(GoogleMap googleMap) {
+
+        mv.onResume();
+
         map = googleMap;
         map.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
 
@@ -585,10 +591,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         meMarker = map.addMarker(new MarkerOptions().position(me).title("Local"));
         rocketMarker = map.addMarker(new MarkerOptions().position(rocket).title("Remote"));
 
-        updatePositions();
         listenLocation();
-
-        mv.onResume();
     }
 
     /* SD and logging handler functions. */
@@ -737,6 +740,8 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                     maximum.setText(String.format("%.00f' MSL\n%.00f' AGL", maxalt, agl));
 
                 }
+
+                updatePositions();
 
             }
         });
@@ -890,9 +895,13 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
             String lonString = separated[5];
             String decimalLonString = lonString.substring(0, lonString.length() - 1);
             double tlon = Double.valueOf(decimalLonString);
-            remotelonDDMMmmmm = Double.valueOf(decimalLatString) * -1;
+            remotelonDDMMmmmm = Double.valueOf(decimalLonString);
             char lonDChar = lonString.charAt(lonString.length() - 1);
             String lonD = Character.toString(lonDChar);
+            if (lonD.equals("W")) {
+                remotelonDDMMmmmm *= -1;
+            }
+
             lastalt = alt;
 
             lat = ToDecimalDegrees(tlat, latD);
@@ -905,7 +914,6 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
             }
         }
 
-        updatePositions();
         updateUI();
 
     }
@@ -966,7 +974,6 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
 
         }
 
-        updatePositions();
         updateUI();
     }
 
